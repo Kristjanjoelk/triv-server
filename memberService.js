@@ -1,4 +1,3 @@
-
 var memberService = function (io) {
     var members = [];
     var queue = [];
@@ -14,19 +13,20 @@ var memberService = function (io) {
         var newMember = new member(_member);
         members.push(newMember);
         queue = [];
-        this.update();
+        update();
         return newMember;
     }
 
-    function getMember(name) {
+    function getMember(userID) {
         for(let i = 0; i < members.length; i++) {
-            if(name === members[i].name) {
+            if(userID === members[i].id) {
                 return members[i];
             }
         }
     }
 
     function getMemberCount() {
+        console.log('MemberService - returning membersCount: ', members.length);
         return members.length;
     }
 
@@ -47,7 +47,7 @@ var memberService = function (io) {
         if(index) {
             members.splice(index, 1);
         }
-        this.update();
+        update();
     }
 
     function update() {
@@ -77,8 +77,9 @@ var memberService = function (io) {
                                     'sportsLeisure': 0 };
 
         this.addPoint = function(point, category) {
-            this.pointDistribution[category]++;
-            this.totalPoints += point;  
+            this.pointDistribution[cEnum[category]] += 1;
+            this.totalPoints += point;
+            update();  
             // console.log('after adding point', members[this.index]);                           
         }
 
@@ -86,9 +87,34 @@ var memberService = function (io) {
             // console.log('removeing member with index', this.index);
             // console.log('length before:', members.length);
             members.splice(this.index, 1);
+            update();
             // console.log('length after:', members.length);
         }
     } 
+
+    const cEnum = {
+        'Entertainment: Books': 'artsLiterature',
+        'Entertainment: Music': 'entertainment',
+        'Entertainment: Musicals': 'entertainment',
+        'Entertainment: Television': 'entertainment',
+        'Entertainment: Video Games': 'entertainment',
+        'Entertainment: Board Games': 'entertainment',
+        'Entertainment: Film': 'entertainment',
+        'Entertainment: Comics': 'entertainment',
+        'Science & Nature' : 'scienceNature',
+        'Science: Computers' : 'scienceNature',
+        'Science: Mathematics' : 'scienceNature',
+        'Mythology' : 'history',
+        'Sports' : 'sportsLeisure',
+        'Geography' : 'geography',
+        'History' : 'history',
+        'Politics' : 'scienceNature',
+        'Science: Gadgets' : 'scienceNature',
+        'Art' : 'artsLiterature',
+        'Celebrities' : 'entertainment',
+        'Animals': 'scienceNature',
+        'Vehicles': 'entertainment',
+    }
 }
 function memberServ(io) {
     return new memberService(io);
