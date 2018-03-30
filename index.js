@@ -1,30 +1,42 @@
 const dummyData = require('./fixtures/data.js');
 const hintService = require('./hintService.js');
 
+console.log(process.env.NODE_ENV);
+if(process.env.NODE_ENV === 'dev ') {
+    console.log('BINGO BINGO BINGO');
+}
 const dataService = require('./data/dataService.js');
 const bodyParser = require('body-parser');
 const PORT = process.env.PORT || 3000;
 
 var app = require('express')();
-app.use(function (req, res, next) {
-    
-            // Website you wish to allow to connect
-            res.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
-    
-            // Request methods you wish to allow
-            res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    
-            // Request headers you wish to allow
-            res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-    
-            // Set to true if you need the website to include cookies in the requests sent
-            // to the API (e.g. in case you use sessions)
-            res.setHeader('Access-Control-Allow-Credentials', true);
-    
-            // Pass to next layer of middleware
-            next();
-        })
-        .listen(3000, "127.0.0.1");
+
+if(process.env.NODE_ENV === 'dev ') {
+    app.use(function (req, res, next) {
+        
+                // Website you wish to allow to connect
+                res.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
+        
+                // Request methods you wish to allow
+                res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+        
+                // Request headers you wish to allow
+                res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+        
+                // Set to true if you need the website to include cookies in the requests sent
+                // to the API (e.g. in case you use sessions)
+                res.setHeader('Access-Control-Allow-Credentials', true);
+        
+                // Pass to next layer of middleware
+                next();
+            })
+            .listen(PORT, "127.0.0.1");
+} else {
+    app.use(function (req, res, next) {
+        next();
+    }).listen(PORT);
+}
+
 app.use(bodyParser.json());
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
