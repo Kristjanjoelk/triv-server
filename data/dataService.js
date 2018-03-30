@@ -1,6 +1,6 @@
 var mongoose = require('mongoose');
 var User = require('./models/User.js');
-mongoose.connect('mongodb://localhost/test');
+mongoose.connect('mongodb://dbuser:heroku@ds119049.mlab.com:19049/trivia');
 
 var db = mongoose.connection;
 
