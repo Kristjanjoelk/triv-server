@@ -1,12 +1,15 @@
+const cEnum = require('./game/category.constants.js');
+const dataService = require('./data/dataService.js')
 var memberService = function (io) {
     var members = [];
     var queue = [];
     this.addMember = addMember;
     this.getMember = getMember;
     this.getMemberCount = getMemberCount;
-    this.addToQueue = addToQueue;
+    this.addSocketIdToUser = addSocketIdToUser;
     this.removeWithId = removeWithId;
     this.update = update;
+    this.save = save;
 
     function addMember(_member, id) {
         // console.log('member joined with name', _member.name);
@@ -30,11 +33,12 @@ var memberService = function (io) {
         return members.length;
     }
 
-    function addToQueue(_name, _id) {
-        queue.push({
-            name: _name,
-            id: _id
-        })
+    function addSocketIdToUser(_name, _id) {
+        for(let i = 0; i < members.length; i++) {
+            if(_name === members[i].name) {
+                members[i].id = _id;
+            }
+        }
     }
     function removeWithId(id) {
         let len = members.length;
@@ -60,11 +64,15 @@ var memberService = function (io) {
         }, 1000);
     }
 
+    function save() {
+        for(let i = 0; i < members.length; i++) {
+            members[i].save();
+        }
+    }
+
 
     var member = function(options) {
-        if(queue.length) {
-            this.id = queue[0].id;
-        }
+        this.id = null;
         this.index = members.length;
         this.name = options.name;
         this.totalPoints = options.totalPoints ? options.totalPoints : 0;
@@ -90,31 +98,19 @@ var memberService = function (io) {
             update();
             // console.log('length after:', members.length);
         }
+        this.save = function() {
+            let self = this;
+            let saveObject = {
+                name: self.name,
+                totalPoints: self.totalPoints,
+                pointDistribution: self.pointDistribution
+            }
+            dataService.saveUser(saveObject);
+        }
     } 
 
-    const cEnum = {
-        'Entertainment: Books': 'artsLiterature',
-        'Entertainment: Music': 'entertainment',
-        'Entertainment: Musicals': 'entertainment',
-        'Entertainment: Television': 'entertainment',
-        'Entertainment: Video Games': 'entertainment',
-        'Entertainment: Board Games': 'entertainment',
-        'Entertainment: Film': 'entertainment',
-        'Entertainment: Comics': 'entertainment',
-        'Science & Nature' : 'scienceNature',
-        'Science: Computers' : 'scienceNature',
-        'Science: Mathematics' : 'scienceNature',
-        'Mythology' : 'history',
-        'Sports' : 'sportsLeisure',
-        'Geography' : 'geography',
-        'History' : 'history',
-        'Politics' : 'scienceNature',
-        'Science: Gadgets' : 'scienceNature',
-        'Art' : 'artsLiterature',
-        'Celebrities' : 'entertainment',
-        'Animals': 'scienceNature',
-        'Vehicles': 'entertainment',
-    }
+
+    
 }
 function memberServ(io) {
     return new memberService(io);

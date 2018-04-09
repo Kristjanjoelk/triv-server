@@ -45,15 +45,14 @@ server.listen(3000);
 const memberService = require('./memberService.js')(io);
 
 
+
 app.get('/', (req, res) => {
    
     res.status(200).send('yay');
 })
 
 app.post('/login', (req, res) => {
-    console.log(memberService);
-    dataService.login(req, memberService);
-    res.status(200).send({'ok': 'ok'});
+    dataService.login(req, res, memberService);
 })
 
 var currentQuestion = 0;
@@ -88,7 +87,7 @@ io.on('connection', (socket) => {
     });
     socket.on('login', (msg) => {
         console.log('Client login', msg);
-        memberService.addToQueue(msg.name, socket.id);
+        memberService.addSocketIdToUser(msg.name, socket.id);
         // dataService.login(req, memberService, socket.id);
     });
     // socket.on('getQuestions', (msg) => {

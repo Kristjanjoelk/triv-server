@@ -1,5 +1,7 @@
 const hintService = require('../hintService.js');
 const dummyData = require('../fixtures/data.js');
+const http = require('https');
+const cEnum = require('./category.constants.js');
 var game = function (io, memberService) {
 
     var data = [];
@@ -16,13 +18,28 @@ var game = function (io, memberService) {
 
     this.startGame = startGame;
     this.checkAnswer = checkAnswer;
+    this.getMoreQuestions = getMoreQuestions;
 
     function prepareData() {
-        let i = 0;
-        for (i; i < dummyData.results.length; i++) {
-            dummyData.results[i].hints = hintService.getHints(dummyData.results[i].correct_answer);
-        }
-        data = dummyData.results;
+        getMoreQuestions(function(err, res) {
+            if(err) {
+                console.log(err);
+            } else {
+                console.log('data recieved:', res);
+                let i = 0;
+                for (i; i < res.results.length; i++) {
+                    res.results[i].hints = hintService.getHints(res.results[i].correct_answer);
+                    res.results[i].cat = cEnum[res.results[i].category];
+                }
+                data = res.results;
+                if(!started) {
+                    started = true;
+                    intervalID = setInterval(function() {
+                        gameLoop();
+                    }, 1 * 1000);
+                }
+            }
+        });
     }
 
 
@@ -40,19 +57,26 @@ var game = function (io, memberService) {
     }
 
     function start() {
-        started = true;
+        
         if(!data.length) {
             prepareData();
+        } else {
+            started = true;
+            intervalID = setInterval(function() {
+                gameLoop();
+            }, 2 * 1000);
         }
-        intervalID = setInterval(function() {
-            gameLoop();
-        }, 2 * 1000);
     }
 
     function gameLoop() {
 
         // 1. check if answered and if so get a new question and initialize it
         // 2. check if its time for a new question
+        if(questionIndex >= data.lenght) {
+            questionIndex = 0;
+            prepareData();
+            initializeQuestion();
+        }
         if(currentQuestionData.answered || !currentQuestionData.timeLeft || currentQuestionData.answered) {
             initializeQuestion();
         }
@@ -77,6 +101,7 @@ var game = function (io, memberService) {
         currentQuestionData.answered = false;
         currentQuestionData.hintlevel = 0;
         currentQuestionData.hint = currentQuestionData.data.hints[0];
+        memberService.save();
         questionIndex += 1;
         console.log('game - initialized question nr: ', questionIndex - 1);
     }
@@ -118,6 +143,24 @@ var game = function (io, memberService) {
         } else {
             console.log('and it wasnt a match...');
         }
+    }
+
+    function getMoreQuestions(callback) {
+
+        http.get('https://opentdb.com/api.php?amount=5&type=multiple', res => {
+            res.setEncoding("utf8");
+            let body = "";
+            res.on("data", data => {
+                body += data;
+            });
+            res.on("end", () => {
+                body = JSON.parse(body);
+                callback(null, body);
+            }),
+            res.on("error", error => {
+                callback('Error getting data ' + error, null);
+            });
+          });
     }
 
     
