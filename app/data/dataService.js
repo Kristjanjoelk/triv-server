@@ -2,6 +2,8 @@ var mongoose = require('mongoose');
 var User = require('./models/User.js');
 if(process.env.NODE_ENV === 'dev ') {
     mongoose.connect('mongodb://localhost/test');
+} else if(process.env.NODE_ENV === 'test'){
+    mongoose.connect('mongodb://localhost/test-dev');
 } else {
     mongoose.connect('mongodb://dbuser:heroku@ds119049.mlab.com:19049/trivia');
 }
@@ -15,25 +17,23 @@ db.once('open', function() {
 });
 
 
-exports.login = function(req, res, memberService) {
+exports.login = function(msg, id, memberService, callback) {
     var result = null;
-    console.log('inside login...', req.body.name, req.body.password);
-    User.findOne({ 'name': req.body.name }, function (err, outerUser) {
+    User.findOne({ 'name': msg.name }, function (err, outerUser) {
         if (err) {
-            // dont know what that would be
             return;
         }
         if(!outerUser) {
-            User.create({'name': req.body.name, 'password': req.body.password}, function(err, _user) {
-                memberService.addMember(_user);
-                res.status(200).send(_user);
+            User.create({'name': msg.name, 'password': msg.password}, function(err, _user) {
+                memberService.addMember(_user, id);
+                callback(null, _user);
             });
         } else {
-            if(req.body.password !== outerUser.password) {
-                res.status(400).send("Wrong password for the username " + outerUser.name);
+            if(msg.password !== outerUser.password) {
+                callback('Wrong password for the username ' + outerUser.name, null);
             } else {
-                memberService.addMember(outerUser);
-                res.status(200).send(outerUser);
+                memberService.addMember(outerUser, id);
+                callback(null, outerUser);
             }
         }
     });
@@ -41,16 +41,14 @@ exports.login = function(req, res, memberService) {
 
 exports.saveUser = function(updateUser) {
     var result = null;
-    console.log('inside usersave...', updateUser);
     User.findOne({ 'name': updateUser.name }, function (err, foundUser) {
         if (err) {
-            // dont know what that would be
             return;
         }
         if(!foundUser) {
             return 'user not found'
         } else {
-            foundUser.save(function(err, updateUser) {
+            foundUser.save(function(err) {
                 if(err) {
                     console.log('error saving user', err);
                 } else {

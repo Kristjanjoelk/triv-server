@@ -1,8 +1,8 @@
-const hintService = require('../hintService.js');
+const hintService = require('../services/hintService.js');
 const dummyData = require('../fixtures/data.js');
 const http = require('https');
 const cEnum = require('./category.constants.js');
-var game = function (io, memberService) {
+var game = function (io, memberService, env) {
 
     var data = [];
     var questionIndex = 0;
@@ -13,8 +13,9 @@ var game = function (io, memberService) {
         hintlevel: 0
     };
     var intervalID = null;
-    var hintTimes = [30, 15];
+    var hintTimes = [5, 3]; // default : [30, 15]
     var started = false;
+    var environment = env;
 
     this.startGame = startGame;
     this.checkAnswer = checkAnswer;
@@ -23,9 +24,9 @@ var game = function (io, memberService) {
     function prepareData() {
         getMoreQuestions(function(err, res) {
             if(err) {
-                console.log(err);
+                // console.log(err);
             } else {
-                console.log('data recieved:', res);
+                //console.log('data recieved:', res);
                 let i = 0;
                 for (i; i < res.results.length; i++) {
                     res.results[i].hints = hintService.getHints(res.results[i].correct_answer);
@@ -72,19 +73,22 @@ var game = function (io, memberService) {
 
         // 1. check if answered and if so get a new question and initialize it
         // 2. check if its time for a new question
-        if(questionIndex >= data.lenght) {
+        if(questionIndex >= data.length) {
             questionIndex = 0;
             prepareData();
             initializeQuestion();
         }
         if(currentQuestionData.answered || !currentQuestionData.timeLeft || currentQuestionData.answered) {
+            if(currentQuestionData.answered) {
+                memberService.save();
+            }
             initializeQuestion();
         }
 
         // 3. check hint level
         let hinter = hintTimes.indexOf(currentQuestionData.timeLeft);
         if(hinter !== -1) {
-            console.log('hinter : ', hinter);
+            // console.log('hinter : ', hinter);
             nextHint();
         }
         
@@ -96,14 +100,22 @@ var game = function (io, memberService) {
     }
     
     function initializeQuestion() {
+        if(!memberService.getMemberCount()) {
+            stopGame(function(err, res) {
+                if(err) {
+                    console.log('Error stopping game:', err);
+                } else {
+                    console.log(res);
+                }
+            });
+        }
         currentQuestionData.data = data[questionIndex];
-        currentQuestionData.timeLeft = 60;
+        currentQuestionData.timeLeft = 10;
         currentQuestionData.answered = false;
         currentQuestionData.hintlevel = 0;
         currentQuestionData.hint = currentQuestionData.data.hints[0];
-        memberService.save();
         questionIndex += 1;
-        console.log('game - initialized question nr: ', questionIndex - 1);
+        // console.log('game - initialized question nr: ', questionIndex - 1);
     }
 
     function nextHint() {
@@ -113,7 +125,7 @@ var game = function (io, memberService) {
     }
 
     function emitQuestionData() {
-        console.log('game - emittingQuestionData');
+        // console.log('game - emittingQuestionData');
         io.send('questiondata', currentQuestionData);
     }
 
@@ -125,6 +137,7 @@ var game = function (io, memberService) {
         } else {
             clearInterval(intervalID);
             intervalID = null;
+            started = false;
             callback(null, "Game stopped");
         }
     }
@@ -146,29 +159,31 @@ var game = function (io, memberService) {
     }
 
     function getMoreQuestions(callback) {
-
-        http.get('https://opentdb.com/api.php?amount=5&type=multiple', res => {
-            res.setEncoding("utf8");
-            let body = "";
-            res.on("data", data => {
-                body += data;
+        console.log('environment', environment);
+        if(environment === 'test') {
+            console.log('running test data');
+            callback(null, dummyData);;
+        } else {
+            http.get('https://opentdb.com/api.php?amount=5&type=multiple', res => {
+                res.setEncoding("utf8");
+                let body = "";
+                res.on("data", data => {
+                    body += data;
+                });
+                res.on("end", () => {
+                    body = JSON.parse(body);
+                    callback(null, body);
+                }),
+                res.on("error", error => {
+                    callback('Error getting data ' + error, null);
+                });
             });
-            res.on("end", () => {
-                body = JSON.parse(body);
-                callback(null, body);
-            }),
-            res.on("error", error => {
-                callback('Error getting data ' + error, null);
-            });
-          });
+        }
     }
-
-    
-
 };
 
 
-function g(io, memberService) {
-    return new game(io, memberService);
+function g(io, memberService, env) {
+    return new game(io, memberService, env);
 }
 module.exports = g;

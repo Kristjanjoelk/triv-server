@@ -1,11 +1,7 @@
-const dummyData = require('./fixtures/data.js');
-const hintService = require('./hintService.js');
-
-console.log(process.env.NODE_ENV);
-if(process.env.NODE_ENV === 'dev ') {
+if(process.env.NODE_ENV === 'dev') {
     console.log('BINGO BINGO BINGO');
 }
-const dataService = require('./data/dataService.js');
+const dataService = require('./app/data/dataService.js');
 const bodyParser = require('body-parser');
 const PORT = process.env.PORT || 3000;
 
@@ -40,33 +36,20 @@ if(process.env.NODE_ENV === 'dev ') {
 app.use(bodyParser.json());
 var server = require('http').Server(app);
 var io = require('socket.io')(server);
-server.listen(3000);
+server.listen(3001);
 
-const memberService = require('./memberService.js')(io);
+const memberService = require('./app/services/memberService.js')(io);
 
 
 
 app.get('/', (req, res) => {
-   
     res.status(200).send('yay');
 })
 
 app.post('/login', (req, res) => {
     dataService.login(req, res, memberService);
 })
-
-var currentQuestion = 0;
-var questions;
-
-// function prepareData(callback) {
-//     let i = 0;
-//     for (i; i < dummyData.results.length; i++) {
-//         dummyData.results[i].hints = hintService.getHints(dummyData.results[i].correct_answer);
-//     }
-//     callback(null, dummyData);
-// }
-
-const game = require('./game/game.js')(io, memberService);
+const game = require('./app/game/game.js')(io, memberService, process.env.NODE_ENV);
 
 
 io.on('connection', (socket) => {
@@ -85,10 +68,15 @@ io.on('connection', (socket) => {
         game.checkAnswer(msg.message, socket.id);
         io.send('message', msg);
     });
-    socket.on('login', (msg) => {
-        console.log('Client login', msg);
-        memberService.addSocketIdToUser(msg.name, socket.id);
-        // dataService.login(req, memberService, socket.id);
+    socket.on('login', function(msg, callback) {
+        console.log('Client login', msg.name, socket.id);
+        dataService.login(msg, socket.id, memberService, function(err, res) {
+            if(err) {
+                callback(err, null);
+            } else {
+                callback(null, res);
+            }
+        });
     });
     // socket.on('getQuestions', (msg) => {
     //     console.log('Client says', msg);

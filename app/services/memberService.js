@@ -1,12 +1,12 @@
-const cEnum = require('./game/category.constants.js');
-const dataService = require('./data/dataService.js')
+const cEnum = require('../game/category.constants.js');
+const dataService = require('../data/dataService.js')
 var memberService = function (io) {
     var members = [];
     var queue = [];
     this.addMember = addMember;
     this.getMember = getMember;
     this.getMemberCount = getMemberCount;
-    this.addSocketIdToUser = addSocketIdToUser;
+    // this.addSocketIdToUser = addSocketIdToUser;
     this.removeWithId = removeWithId;
     this.update = update;
     this.save = save;
@@ -14,9 +14,11 @@ var memberService = function (io) {
     function addMember(_member, id) {
         // console.log('member joined with name', _member.name);
         var newMember = new member(_member);
+        newMember.setId(id);
         members.push(newMember);
         queue = [];
         update();
+        console.log('members length:', members.length);
         return newMember;
     }
 
@@ -33,35 +35,35 @@ var memberService = function (io) {
         return members.length;
     }
 
-    function addSocketIdToUser(_name, _id) {
-        for(let i = 0; i < members.length; i++) {
-            if(_name === members[i].name) {
-                members[i].id = _id;
-            }
-        }
-    }
+    // function addSocketIdToUser(_name, _id) {
+    //     for(let i = 0; i < members.length; i++) {
+    //         if(_name === members[i].name) {
+    //             members[i].id = _id;
+    //         }
+    //     }
+    // }
+
     function removeWithId(id) {
         let len = members.length;
-        let index = null;
+        console.log('before remove of member', members.length);
         for(let i = 0; i < len; i++) {
             if(members[i].id === id) {
-                index = i;
+                members[i].removeMember();
+                return;
             }
         }
-        if(index) {
-            members.splice(index, 1);
-        }
+        console.log('failed removing member with id:', id);
+        console.log('members online:', members.length);
+        console.log('members[0]', members[0]);
         update();
     }
 
     function update() {
         if(!members) {
             console.log('something went terribly wrong', members);
-
+            return;
         }
-        setTimeout(function() {
-            io.send('membersupdate', members);
-        }, 1000);
+        io.send('membersupdate', members);
     }
 
     function save() {
@@ -106,6 +108,10 @@ var memberService = function (io) {
                 pointDistribution: self.pointDistribution
             }
             dataService.saveUser(saveObject);
+        }
+
+        this.setId = function(id) {
+            this.id = id;
         }
     } 
 
